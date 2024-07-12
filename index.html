@@ -64,7 +64,10 @@
     const obstacleWidth = scaledImageSize;
     const obstacleHeight = scaledImageSize;
     let obstacleSpeed = 5;
+    let obstacleInterval = 2000; // Interval in milliseconds to create a new obstacle
     let score = 0;
+    let lastObstacleTime = Date.now();
+    let gameStartTime = Date.now();
     let gameOver = false;
     let gameOverMessage = document.getElementById('gameOverMessage');
     let finalScoreElement = document.getElementById('finalScore');
@@ -81,43 +84,50 @@
         return pos.x > player.x && pos.x < player.x + player.width && pos.y > player.y && pos.y < player.y + player.height;
     }
 
-    canvas.addEventListener('mousedown', function(evt) {
+    function onMouseDown(evt) {
         const mousePos = getMousePos(canvas, evt);
         if (isInsidePlayer(mousePos)) {
             player.isDragging = true;
         }
-    });
+    }
 
-    canvas.addEventListener('mousemove', function(evt) {
+    function onMouseMove(evt) {
         if (player.isDragging) {
             const mousePos = getMousePos(canvas, evt);
             player.x = mousePos.x - player.width / 2;
         }
-    });
+    }
 
-    canvas.addEventListener('mouseup', function() {
+    function onMouseUp() {
         player.isDragging = false;
-    });
+    }
 
-    canvas.addEventListener('touchstart', function(evt) {
+    function onTouchStart(evt) {
         const touch = evt.touches[0];
         const touchPos = getMousePos(canvas, touch);
         if (isInsidePlayer(touchPos)) {
             player.isDragging = true;
         }
-    });
+    }
 
-    canvas.addEventListener('touchmove', function(evt) {
+    function onTouchMove(evt) {
         if (player.isDragging) {
             const touch = evt.touches[0];
             const touchPos = getMousePos(canvas, touch);
             player.x = touchPos.x - player.width / 2;
         }
-    });
+    }
 
-    canvas.addEventListener('touchend', function() {
+    function onTouchEnd() {
         player.isDragging = false;
-    });
+    }
+
+    canvas.addEventListener('mousedown', onMouseDown);
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('mouseup', onMouseUp);
+    canvas.addEventListener('touchstart', onTouchStart);
+    canvas.addEventListener('touchmove', onTouchMove);
+    canvas.addEventListener('touchend', onTouchEnd);
 
     function createObstacle() {
         const x = Math.random() * (canvas.width - obstacleWidth);
@@ -129,18 +139,25 @@
             obstacles[i].y += obstacleSpeed;
             if (obstacles[i].y > canvas.height) {
                 obstacles.splice(i, 1);
-                if (!gameOver) {
-                    score++;
-                }
-                if (score % 5 === 0) {
-                    obstacleSpeed += 1;
-                }
             }
         }
     }
 
     function drawBackground() {
-        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+        const aspectRatio = backgroundImage.width / backgroundImage.height;
+        let bgWidth = canvas.width;
+        let bgHeight = canvas.height;
+        
+        if (bgWidth / bgHeight > aspectRatio) {
+            bgHeight = bgWidth / aspectRatio;
+        } else {
+            bgWidth = bgHeight * aspectRatio;
+        }
+
+        const bgX = (canvas.width - bgWidth) / 2;
+        const bgY = (canvas.height - bgHeight) / 2;
+
+        ctx.drawImage(backgroundImage, bgX, bgY, bgWidth, bgHeight);
     }
 
     function drawPlayer() {
@@ -154,10 +171,6 @@
     }
 
     function drawGameOver() {
-        ctx.fillStyle = 'white';
-        ctx.font = '48px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('Game Over! Score: ' + score, canvas.width / 2, canvas.height / 2);
         gameOverMessage.style.display = 'block';
         finalScoreElement.textContent = score;
     }
@@ -173,7 +186,10 @@
         };
         obstacles = [];
         obstacleSpeed = 5;
+        obstacleInterval = 2000;
         score = 0;
+        lastObstacleTime = Date.now();
+        gameStartTime = Date.now();
         gameOver = false;
         gameOverMessage.style.display = 'none';
         gameLoop();
@@ -195,29 +211,43 @@
     }
 
     function gameLoop() {
+        if (gameOver) return;
+
         const now = Date.now();
-        if (!gameOver) {
-            if (now - lastObstacleTime > 1000) { // Ajoute un point toutes les secondes
-                lastObstacleTime = now;
-                score++;
-            }
+        const elapsedTime = (now - gameStartTime) / 1000; // Time in seconds
+
+        if (now - lastObstacleTime > obstacleInterval) {
+            lastObstacleTime = now;
+            createObstacle();
         }
+
+        // Increase difficulty progressively based on elapsed time
+        obstacleSpeed = 5 + elapsedTime * 0.2;
+        obstacleInterval = Math.max(500, 2000 - elapsedTime * 10);
+
+        score = Math.floor(elapsedTime); // Score is based on time survived
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawBackground();
         drawPlayer();
         drawObstacles();
         updateObstacles();
         detectCollision();
+
         requestAnimationFrame(gameLoop);
     }
 
-    backgroundImage.onload = function() {
-        playerImage.onload = function() {
-            obstacleImage.onload = function() {
-                gameLoop();
-            };
-        };
-    };
+    function startGame() {
+        if (backgroundImage.complete && playerImage.complete && obstacleImage.complete) {
+            gameLoop();
+        } else {
+            backgroundImage.onload = startGame;
+            playerImage.onload = startGame;
+            obstacleImage.onload = startGame;
+        }
+    }
+
+    startGame();
 </script>
 </body>
 </html>
