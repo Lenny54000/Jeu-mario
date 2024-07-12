@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background: #000;
+        }
+        #gameOverMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            color: black;
+            padding: 20px;
+            border: 2px solid black;
+            border-radius: 10px;
+            font-size: 24px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<div id="gameOverMessage">Game Over! Score: <span id="finalScore"></span></div>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const backgroundImage = new Image();
+    backgroundImage.src = 'ap.jpg';
+
+    const playerImage = new Image();
+    playerImage.src = 'player.png';
+
+    const obstacleImage = new Image();
+    obstacleImage.src = 'pique.png';
+
+    const originalImageSize = 225; // Original size of the images (225x225)
+    const scaledImageSize = 50; // Size we want to draw the images
+
+    let player = {
+        x: canvas.width / 2 - scaledImageSize / 2,
+        y: canvas.height - scaledImageSize - 10,
+        width: scaledImageSize,
+        height: scaledImageSize,
+        speed: 10,
+        isDragging: false
+    };
+
+    let obstacles = [];
+    const obstacleWidth = scaledImageSize;
+    const obstacleHeight = scaledImageSize;
+    let obstacleSpeed = 5;
+    let score = 0;
+    let gameOver = false;
+    let gameOverMessage = document.getElementById('gameOverMessage');
+    let finalScoreElement = document.getElementById('finalScore');
+
+    function getMousePos(canvas, evt) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: evt.clientX - rect.left,
+            y: evt.clientY - rect.top
+        };
+    }
+
+    function isInsidePlayer(pos) {
+        return pos.x > player.x && pos.x < player.x + player.width && pos.y > player.y && pos.y < player.y + player.height;
+    }
+
+    canvas.addEventListener('mousedown', function(evt) {
+        const mousePos = getMousePos(canvas, evt);
+        if (isInsidePlayer(mousePos)) {
+            player.isDragging = true;
+        }
+    });
+
+    canvas.addEventListener('mousemove', function(evt) {
+        if (player.isDragging) {
+            const mousePos = getMousePos(canvas, evt);
+            player.x = mousePos.x - player.width / 2;
+        }
+    });
+
+    canvas.addEventListener('mouseup', function() {
+        player.isDragging = false;
+    });
+
+    canvas.addEventListener('touchstart', function(evt) {
+        const touch = evt.touches[0];
+        const touchPos = getMousePos(canvas, touch);
+        if (isInsidePlayer(touchPos)) {
+            player.isDragging = true;
+        }
+    });
+
+    canvas.addEventListener('touchmove', function(evt) {
+        if (player.isDragging) {
+            const touch = evt.touches[0];
+            const touchPos = getMousePos(canvas, touch);
+            player.x = touchPos.x - player.width / 2;
+        }
+    });
+
+    canvas.addEventListener('touchend', function() {
+        player.isDragging = false;
+    });
+
+    function createObstacle() {
+        const x = Math.random() * (canvas.width - obstacleWidth);
+        obstacles.push({ x: x, y: -obstacleHeight });
+    }
+
+    function updateObstacles() {
+        for (let i = 0; i < obstacles.length; i++) {
+            obstacles[i].y += obstacleSpeed;
+            if (obstacles[i].y > canvas.height) {
+                obstacles.splice(i, 1);
+                if (!gameOver) {
+                    score++;
+                }
+                if (score % 5 === 0) {
+                    obstacleSpeed += 1;
+                }
+            }
+        }
+    }
+
+    function drawBackground() {
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+    }
+
+    function drawPlayer() {
+        ctx.drawImage(playerImage, player.x, player.y, player.width, player.height);
+    }
+
+    function drawObstacles() {
+        for (const obstacle of obstacles) {
+            ctx.drawImage(obstacleImage, obstacle.x, obstacle.y, obstacleWidth, obstacleHeight);
+        }
+    }
+
+    function drawGameOver() {
+        ctx.fillStyle = 'white';
+        ctx.font = '48px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Game Over! Score: ' + score, canvas.width / 2, canvas.height / 2);
+        gameOverMessage.style.display = 'block';
+        finalScoreElement.textContent = score;
+    }
+
+    function resetGame() {
+        player = {
+            x: canvas.width / 2 - scaledImageSize / 2,
+            y: canvas.height - scaledImageSize - 10,
+            width: scaledImageSize,
+            height: scaledImageSize,
+            speed: 10,
+            isDragging: false
+        };
+        obstacles = [];
+        obstacleSpeed = 5;
+        score = 0;
+        gameOver = false;
+        gameOverMessage.style.display = 'none';
+        gameLoop();
+    }
+
+    function detectCollision() {
+        for (const obstacle of obstacles) {
+            if (
+                player.x < obstacle.x + obstacleWidth &&
+                player.x + player.width > obstacle.x &&
+                player.y < obstacle.y + obstacleHeight &&
+                player.y + player.height > obstacle.y
+            ) {
+                gameOver = true;
+                drawGameOver();
+                setTimeout(resetGame, 2000);
+            }
+        }
+    }
+
+    function gameLoop() {
+        const now = Date.now();
+        if (!gameOver) {
+            if (now - lastObstacleTime > 1000) { // Ajoute un point toutes les secondes
+                lastObstacleTime = now;
+                score++;
+            }
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackground();
+        drawPlayer();
+        drawObstacles();
+        updateObstacles();
+        detectCollision();
+        requestAnimationFrame(gameLoop);
+    }
+
+    backgroundImage.onload = function() {
+        playerImage.onload = function() {
+            obstacleImage.onload = function() {
+                gameLoop();
+            };
+        };
+    };
+</script>
+</body>
+</html>
