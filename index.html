@@ -223,7 +223,7 @@
 
         // Increase difficulty progressively based on elapsed time
         obstacleSpeed = 5 + elapsedTime * 0.1; // Increase speed over time
-        obstacleInterval = Math.max(500, 2000 - elapsedTime * 50); // Decrease interval over time
+        obstacleInterval = Math.max(500, 2000 - elapsedTime * 200); // Increase frequency more rapidly
 
         score = Math.floor(elapsedTime); // Score is based on time survived
 
@@ -239,6 +239,9 @@
 
     function startGame() {
         if (backgroundImage.complete && playerImage.complete && obstacleImage.complete) {
+            // Simulate an immediate collision for testing
+            createObstacle();
+            player.y = -scaledImageSize; // Force the player to collide with the first obstacle
             gameLoop();
         } else {
             backgroundImage.onload = startGame;
