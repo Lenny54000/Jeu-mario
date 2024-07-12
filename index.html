@@ -222,8 +222,8 @@
         }
 
         // Increase difficulty progressively based on elapsed time
-        obstacleSpeed = 5 + elapsedTime * 0.2;
-        obstacleInterval = Math.max(500, 2000 - elapsedTime * 10);
+        obstacleSpeed = 5 + elapsedTime * 0.1; // Increase speed over time
+        obstacleInterval = Math.max(500, 2000 - elapsedTime * 50); // Decrease interval over time
 
         score = Math.floor(elapsedTime); // Score is based on time survived
 
